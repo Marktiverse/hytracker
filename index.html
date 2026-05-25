@@ -28,6 +28,10 @@
             <h1 class="text-sm md:text-lg font-bold tracking-wider truncate">中度以上未購買追蹤系統</h1>
         </div>
         <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+            <div id="cloudStatus" class="flex items-center space-x-1 bg-slate-800 text-gray-400 text-[10px] md:text-xs px-2.5 py-1.5 rounded border border-slate-700">
+                <span class="material-icons text-xs text-amber-500 animate-pulse">cloud_queue</span>
+                <span id="cloudStatusText">雲端連線中...</span>
+            </div>
             <button class="bg-slate-800 hover:bg-slate-700 text-gray-200 text-xs px-2.5 py-1.5 rounded flex items-center space-x-1 border border-slate-700 transition">
                 <span class="material-icons text-sm md:text-base">download</span>
                 <span>匯出進度</span>
@@ -49,7 +53,7 @@
                         <h2 class="text-sm md:text-base font-bold text-gray-900">聽力師聯繫進度戰報 (週目標：10 筆)</h2>
                     </div>
                     <p class="text-[11px] text-gray-500">
-                        本周區間：<span id="weekRangeText" class="font-semibold text-gray-700"></span> <span class="hidden md:inline text-gray-400">（各同仁總體進度以全名單 751 位進行均分分配）</span>
+                        本周區間：<span id="weekRangeText" class="font-semibold text-gray-700"></span> <span class="hidden md:inline text-gray-400">（各同仁總體進度以全名單 751 位進行均分分配，雲端即時雙向異動儲存）</span>
                     </p>
                 </div>
                 <div class="bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 w-full md:w-auto text-center md:text-left">
@@ -181,6 +185,7 @@
                     </div>
                 </div>
 
+                <!-- 清單表格 -->
                 <div class="w-full overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
                     <table class="w-full text-left border-collapse table-fixed min-w-[900px] lg:min-w-0">
                         <thead>
@@ -277,7 +282,7 @@
                     </div>
                 </div>
 
-                <!-- 本周四位核心同仁衝刺成果看板 + 累積試聽與成交進度(核心修改一) -->
+                <!-- 本周四位核心同仁衝刺成果看板 -->
                 <div class="col-span-12 md:col-span-4 bg-white rounded-xl shadow-sm p-4 border border-gray-200 space-y-3">
                     <div class="flex items-center space-x-1.5 border-b border-gray-100 pb-2">
                         <span class="material-icons text-indigo-600">trending_up</span>
@@ -289,7 +294,7 @@
                 </div>
             </div>
 
-            <!-- 核心修改二：新增試聽未成交名單區塊 -->
+            <!-- 試聽未成交名單區塊 -->
             <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200 space-y-3">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-2">
                     <div class="flex items-center space-x-1.5">
@@ -393,7 +398,7 @@
                 const isContacted = c.status !== '未聯繫' && c.contactDate;
                 if (isContacted) contactedCount++;
                 if (c.isTrial) trialCount++;
-                if (c.isClosed || c.status === '已選配/訂閱') closedCount++;
+                if (c.isClosed || c.status === '進店') closedCount++;
                 
                 if (statusCounts[c.status] !== undefined) {
                     statusCounts[c.status]++;
@@ -435,7 +440,6 @@
             });
             statusContainer.innerHTML = statusHtml;
 
-            // 核心修改一：新增並渲染同仁的每週聯繫、累積試聽數、累積成交數進度
             const staffContainer = document.getElementById('weeklyStaffStatsContainer');
             let staffHtml = '';
             staffList.forEach(staffName => {
@@ -480,7 +484,6 @@
             });
             staffContainer.innerHTML = staffHtml;
 
-            // 核心修改二：過濾並動態渲染「試聽未成交名單」
             const trialNotClosedList = customerData.filter(c => c.isTrial && !c.isClosed && c.status !== '已選配/訂閱');
             document.getElementById('trialNotClosedCount').innerText = trialNotClosedList.length;
             
@@ -705,8 +708,8 @@
                             <input type="text" placeholder="預約門市" value="${customer.bookingStore}" onchange="updateCustomerField('${customer.id}', 'bookingStore', this.value)" class="border border-gray-300 rounded px-1 py-0.5 text-[10px] text-gray-700 bg-white w-full" />
                         </td>
                         <td class="py-2.5 px-0.5 text-center space-y-1">
-                            <button onclick="toggleCustomerBool('${customer.id}', 'isTrial')" class="w-full text-[10px] px-1 py-0.5 rounded border transition-colors ${customer.isTrial ? 'bg-emerald-50 text-emerald-600 border-emerald-200 font-bold' : 'bg-gray-50 text-gray-400 border-gray-200'}">${customer.isTrial ? '已試' : '未試'}</button>
-                            <button onclick="toggleCustomerBool('${customer.id}', 'isClosed')" class="w-full text-[10px] px-1 py-0.5 rounded border transition-colors ${customer.isClosed ? 'bg-indigo-50 text-indigo-600 border-indigo-200 font-bold' : 'bg-gray-50 text-gray-400 border-gray-200'}">${customer.isClosed ? '成交' : '未結'}</button>
+                            <button onclick="updateCustomerFieldLocal('${customer.id}', 'isTrial')" class="w-full text-[10px] px-1 py-0.5 rounded border transition-colors \${customer.isTrial ? 'bg-emerald-50 text-emerald-600 border-emerald-200 font-bold' : 'bg-gray-50 text-gray-400 border-gray-200'}">\${customer.isTrial ? '已試' : '未試'}</button>
+                            <button onclick="updateCustomerFieldLocal('${customer.id}', 'isClosed')" class="w-full text-[10px] px-1 py-0.5 rounded border transition-colors \${customer.isClosed ? 'bg-indigo-50 text-indigo-600 border-indigo-200 font-bold' : 'bg-gray-50 text-gray-400 border-gray-200'}">\${customer.isClosed ? '成交' : '未結'}</button>
                         </td>
                         <td class="py-2.5 px-1 text-center">
                             <select onchange="updateCustomerField('${customer.id}', 'opportunity', this.value)" class="w-full bg-white border border-gray-300 rounded px-1 py-1 text-[11px] font-bold text-center text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">${oppOptions}</select>
@@ -727,12 +730,21 @@
                 if (field === 'contactDate' && value && customer.status === '未聯繫') { customer.status = '成功邀約進店'; }
                 renderLeaderboard();
                 updateTableAndStats(true); 
+                if (window.syncToFirebase) window.syncToFirebase(id, field, value);
+                if (field === 'contactDate' && value) {
+                    if (window.syncToFirebase) window.syncToFirebase(id, 'status', customer.status);
+                }
             }
         }
 
-        function toggleCustomerBool(id, field) {
+        function updateCustomerFieldLocal(id, field) {
             const customer = customerData.find(c => c.id === id);
-            if (customer) { customer[field] = !customer[field]; renderLeaderboard(); updateTableAndStats(true); }
+            if (customer) {
+                customer[field] = !customer[field];
+                renderLeaderboard();
+                updateTableAndStats(true); 
+                if (window.syncToFirebase) window.syncToFirebase(id, field, customer[field]);
+            }
         }
 
         function selectLevel(level) {
@@ -757,20 +769,38 @@
         function selectStaff(staffName) { currentStaff = (currentStaff === staffName) ? null : staffName; renderLeaderboard(); updateTableAndStats(); }
 
         function resetSystem() {
-            if(confirm('確定要清除所有填寫的聯繫進度、商機分類並還原篩選狀態嗎？')) {
-                customerData.forEach(c => { c.assignedStaff = ''; c.contactDate = ''; c.status = '未聯繫'; c.isClosed = false; c.opportunity = ''; });
+            if(confirm('確定要清除雲端及本地所有填寫的聯繫進度、商機分類並還原篩選狀態嗎？')) {
+                const batchUpdates = {};
+                customerData.forEach(c => { 
+                    c.assignedStaff = ''; 
+                    c.contactDate = ''; 
+                    c.status = '未聯繫'; 
+                    c.isClosed = false; 
+                    c.opportunity = ''; 
+                    
+                    batchUpdates[`customers/\${c.id}/assignedStaff`] = '';
+                    batchUpdates[`customers/\${c.id}/contactDate`] = '';
+                    batchUpdates[`customers/\${c.id}/status`] = '未聯繫';
+                    batchUpdates[`customers/\${c.id}/isClosed`] = false;
+                    batchUpdates[`customers/\${c.id}/opportunity`] = '';
+                });
                 currentLevel = '全部'; currentStatus = '所有狀態'; currentOpportunity = '所有商機'; currentStaff = null;
                 document.getElementById('statusFilter').value = '所有狀態'; document.getElementById('opportunityFilter').value = '所有商機';
-                selectLevel('全部'); renderLeaderboard(); updateTableAndStats();
+                selectLevel('全部'); 
+                renderLeaderboard(); 
+                updateTableAndStats();
+                if (window.syncBatchToFirebase) window.syncBatchToFirebase(batchUpdates);
             }
         }
 
         window.onload = function() { initWeekRange(); renderLeaderboard(); updateTableAndStats(); };
     </script>
 
-    <!-- Firebase App Module Integration -->
+    <!-- Firebase Realtime App & Sync System Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+        
         const firebaseConfig = {
             apiKey: "AIzaSyBwDKkYjBSWWUq__M99w9siisoMpqhVQgw",
             authDomain: "hytracker-6fd1d.firebaseapp.com",
@@ -779,8 +809,33 @@
             messagingSenderId: "1061045423631",
             appId: "1:1061045423631:web:ce30bacc1b15f9b34f5d7a"
         };
+        
         const app = initializeApp(firebaseConfig);
-        console.log("Firebase initialized successfully with project ID:", firebaseConfig.projectId);
+        const db = getDatabase(app);
+        
+        window.syncToFirebase = function(id, field, value) {
+            update(ref(db, `customers/\${id}`), { [field]: value });
+        };
+        
+        window.syncBatchToFirebase = function(updates) {
+            update(ref(db), updates);
+        };
+        
+        const customersRef = ref(db, 'customers');
+        onValue(customersRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                customerData.forEach(c => {
+                    if (data[c.id]) {
+                        Object.assign(c, data[c.id]);
+                    }
+                });
+                renderLeaderboard();
+                updateTableAndStats(true);
+            }
+            document.getElementById('cloudStatusText').innerText = "雲端雙向同步中";
+            document.getElementById('cloudStatus').className = "flex items-center space-x-1 bg-emerald-900/40 text-emerald-300 text-[10px] md:text-xs px-2.5 py-1.5 rounded border border-emerald-800/60";
+        });
     </script>
 </body>
 </html>
