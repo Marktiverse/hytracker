@@ -798,9 +798,11 @@
 
     <!-- Firebase Realtime App & Sync System Script -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+        // 1. 改為引入 Firestore 模組
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, updateDoc, setDoc, collection, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
+        // 你的專案專屬金鑰
         const firebaseConfig = {
             apiKey: "AIzaSyBJncJ1t-JsL2vfzfZoQrKu5ftJsFBvpuU",
             authDomain: "hypotential.firebaseapp.com",
@@ -810,39 +812,72 @@
             appId: "1:694429367463:web:4e04962968a359c60baf82"
         };
         
+        // 2. 初始化 Firestore
         const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        const db = getFirestore(app);
         
-        window.syncToFirebase = function(id, field, value) {
-            update(ref(db, `customers/${id}`), { [field]: value });
+        // 【功能一：即時同步單筆欄位到 Firestore】
+        window.syncToFirebase = async function(id, field, value) {
+            try {
+                // 在 customers 集合中找到對應的 id 文件進行修改
+                const docRef = doc(db, "customers", String(id));
+                await updateDoc(docRef, { [field]: value });
+            } catch (error) {
+                console.error("單筆雲端更新失敗:", error);
+            }
         };
         
-        window.syncBatchToFirebase = function(updates) {
-            update(ref(db), updates);
+        // 【功能二：批次重置或更新到 Firestore】
+        window.syncBatchToFirebase = async function(updates) {
+            try {
+                const batch = writeBatch(db);
+                // 解析原本 RTDB 的路徑格式路徑 "customers/id"
+                for (const path in updates) {
+                    const parts = path.split('/');
+                    if (parts[0] === 'customers' && parts[1]) {
+                        const docRef = doc(db, "customers", parts[1]);
+                        batch.set(docRef, updates[path], { merge: true });
+                    }
+                }
+                await batch.commit();
+            } catch (error) {
+                console.error("批次雲端更新失敗:", error);
+            }
         };
         
-        const customersRef = ref(db, 'customers');
-        onValue(customersRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                customerData.forEach(c => {
-                    if (data[c.id]) {
-                        Object.assign(c, data[c.id]);
+        // 【功能三：實時監聽雲端資料庫（雙向異動儲存）】
+        const customersCollection = collection(db, 'customers');
+        
+        onSnapshot(customersCollection, async (snapshot) => {
+            if (!snapshot.empty) {
+                // 如果雲端有資料，拿雲端資料覆蓋本地端網頁變數 (customerData)
+                snapshot.forEach((doc) => {
+                    const id = doc.id;
+                    const remoteData = doc.data();
+                    const localCustomer = customerData.find(c => String(c.id) === String(id));
+                    if (localCustomer) {
+                        Object.assign(localCustomer, remoteData);
                     }
                 });
             } else {
-                const initUpdates = {};
+                // 如果雲端完全是空的（第一次建立），自動把本地初始資料整批推上雲端
+                const batch = writeBatch(db);
                 customerData.forEach(c => {
-                    initUpdates[`customers/${c.id}`] = c;
+                    const docRef = doc(db, 'customers', String(c.id));
+                    batch.set(docRef, c);
                 });
-                update(ref(db), initUpdates);
+                await batch.commit();
             }
             
+            // 順利連線，切換 UI 狀態燈
             document.getElementById('cloudStatusText').innerText = "雲端雙向同步中";
             document.getElementById('cloudStatus').className = "flex items-center space-x-1 bg-emerald-900/40 text-emerald-300 text-[10px] md:text-xs px-2.5 py-1.5 rounded border border-emerald-800/60";
             
+            // 重新渲染你的追蹤系統畫面
             renderLeaderboard();
             updateTableAndStats(true);
+        }, (error) => {
+            console.error("Firestore 連線或權限發生錯誤:", error);
         });
     </script>
 </body>
